@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수요 예측 미니랩 v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Noto+Sans+KR:wght@300;400;500;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #07090f;
+  --s1: #0d1117;
+  --s2: #111827;
+  --s3: #1a2332;
+  --border: #1e293b;
+  --border2: #263347;
+  --stat: #38bdf8;       /* sky blue — statistical */
+  --stat-dim: rgba(56,189,248,0.12);
+  --stat-glow: rgba(56,189,248,0.25);
+  --ai: #a78bfa;         /* violet — AI */
+  --ai-dim: rgba(167,139,250,0.12);
+  --ai-glow: rgba(167,139,250,0.25);
+  --good: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --text: #e2e8f0;
+  --text2: #94a3b8;
+  --text3: #475569;
+  --mono: 'DM Mono', monospace;
+  --body: 'Noto Sans KR', 'Sora', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Dot grid bg */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, rgba(56,189,248,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 28px 20px 80px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── HEADER ── */
+.hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+.hdr-l { flex: 1; min-width: 260px; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--stat);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow::before { content: ''; width: 20px; height: 1px; background: var(--stat); }
+
+h1 {
+  font-family: 'Sora', var(--body);
+  font-size: clamp(20px, 3vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+.sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text2);
+  max-width: 520px;
+  line-height: 1.7;
+}
+
+/* Lang toggle */
+.lang-sw {
+  display: flex;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.lang-sw button {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-family: var(--body);
+  transition: all 0.15s;
+}
+.lang-sw button.on { background: var(--stat); color: #07090f; }
+
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 18px;
+  align-items: start;
+}
+@media(max-width:900px){ .layout { grid-template-columns:1fr; } }
+
+/* ── CARD ── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  position: relative;
+}
+.card + .card { margin-top: 14px; }
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+/* ── SCENARIO TABS ── */
+.sc-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.sc-tab {
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--s2);
+  color: var(--text2);
+  transition: all 0.15s;
+  font-family: var(--body);
+}
+.sc-tab:hover { border-color: var(--stat); color: var(--text); }
+.sc-tab.on { background: var(--stat); border-color: var(--stat); color: #07090f; }
+
+/* Scenario info */
+.sc-box {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.sc-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.sc-name { font-size: 14px; font-weight: 700; color: #f1f5f9; }
+.sc-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.b-basic  { background:rgba(56,189,248,0.15); color:#7dd3fc; }
+.b-promo  { background:rgba(251,191,36,0.15); color:#fde68a; }
+.b-season { background:rgba(52,211,153,0.15); color:#6ee7b7; }
+.b-new    { background:rgba(241,112,82,0.15); color:#fca5a5; }
+.b-vol    { background:rgba(167,139,250,0.15); color:#c4b5fd; }
+.b-ext    { background:rgba(45,212,191,0.15); color:#5eead4; }
+
+.sc-hint { font-size: 12px; color: var(--text2); line-height:1.6; }
+
+/* External factors */
+.ext-factors { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.ext-chip {
+  display: flex; align-items:center; gap:5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1px solid var(--border2);
+  background: var(--s3);
+  color: var(--text2);
+}
+
+/* History */
+.hist-row {
+  display: flex; gap:5px; flex-wrap:wrap;
+  margin-bottom: 14px;
+}
+.hist-chip {
+  display:flex; flex-direction:column; align-items:center;
+  background: var(--s2); border:1px solid var(--border);
+  border-radius:8px; padding:6px 9px; min-width:44px;
+}
+.hist-chip .dl { font-size:9px; color:var(--text3); font-family:var(--mono); letter-spacing:.05em; }
+.hist-chip .dv { font-size:14px; font-weight:700; font-family:var(--mono); color:var(--text); }
+
+/* ── METHOD TABS (stat / AI) ── */
+.method-tabs {
+  display: flex;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.method-tab {
+  flex: 1; padding: 9px 0;
+  text-align: center;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; border: none; background: transparent;
+  color: var(--text3);
+  font-family: var(--body);
+  transition: all 0.2s;
+  display: flex; align-items:center; justify-content:center; gap:6px;
+}
+.method-tab .dot { width:7px; height:7px; border-radius:50%; }
+.method-tab.stat-on { background: var(--stat-dim); color: var(--stat); border-bottom: 2px solid var(--stat); }
+.method-tab.ai-on   { background: var(--ai-dim);   color: var(--ai);   border-bottom: 2px solid var(--ai);   }
+
+/* Method options */
+.method-opts { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+.mopt {
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 11px; font-weight:600;
+  cursor:pointer; border:1px solid var(--border);
+  background: var(--s2); color:var(--text2);
+  transition:all 0.15s; text-align:left;
+  font-family:var(--body);
+}
+.mopt:hover { border-color:var(--border2); color:var(--text); }
+.mopt.on-stat { border-color:var(--stat); background:var(--stat-dim); color:#bae6fd; }
+.mopt.on-ai   { border-color:var(--ai);   background:var(--ai-dim);   color:#ddd6fe; }
+.mopt .mn { display:block; font-size:11px; }
+.mopt .mt { display:block; font-size:9px; font-family:var(--mono); color:var(--text3); margin-top:2px; }
+.mopt.on-stat .mt { color:var(--stat); }
+.mopt.on-ai   .mt { color:var(--ai); }
+
+/* Formula */
+.formula {
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: #a78bfa;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.formula.stat-f { color: #7dd3fc; }
+
+/* External factor adjustment display */
+.ext-calc {
+  background: rgba(45,212,191,0.06);
+  border: 1px solid rgba(45,212,191,0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-family: var(--mono);
+  color: #5eead4;
+  margin-bottom: 14px;
+  line-height: 1.8;
+}
+.ext-calc .ec-title { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color: rgba(94,234,212,0.6); margin-bottom:4px; display:block; }
+
+/* Slider */
+.sl-row { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+.sl-label { font-size:12px; font-weight:600; color:var(--text2); }
+.sl-val { font-family:var(--mono); font-size:26px; font-weight:500; color:#60a5fa; }
+
+input[type=range] {
+  width:100%; -webkit-appearance:none;
+  height:4px; border-radius:2px;
+  background:var(--border2); outline:none; cursor:pointer;
+  margin-bottom:14px;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px;
+  border-radius:50%; background:#60a5fa;
+  box-shadow:0 0 10px rgba(96,165,250,0.6);
+  cursor:pointer;
+}
+
+/* ── CHART ── */
+.chart-wrap {
+  background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:12px;
+}
+.chart-bars {
+  display:flex; align-items:flex-end; gap:5px;
+  height:130px; margin-bottom:6px;
+}
+.bc { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:2px; }
+.bb { width:100%; border-radius:3px 3px 0 0; transition:height .4s cubic-bezier(.34,1.56,.64,1); min-height:3px; }
+.bb-h    { background:rgba(71,85,105,0.7); }
+.bb-mine { background:linear-gradient(180deg,#93c5fd,#3b82f6); box-shadow:0 0 6px rgba(59,130,246,.4); }
+.bb-stat { background:linear-gradient(180deg,#7dd3fc,#38bdf8); box-shadow:0 0 6px rgba(56,189,248,.4); }
+.bb-ai   { background:linear-gradient(180deg,#c4b5fd,#8b5cf6); box-shadow:0 0 6px rgba(139,92,246,.4); }
+.bb-act  { background:linear-gradient(180deg,#fde68a,#f59e0b); box-shadow:0 0 6px rgba(245,158,11,.4); border:1px dashed rgba(251,191,36,.5); }
+.bn { font-size:9px; font-family:var(--mono); color:var(--text3); }
+.bl { font-size:8px; color:var(--text3); font-family:var(--mono); text-align:center; letter-spacing:.02em; }
+
+.legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+.leg { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text2); font-family:var(--mono); }
+.ld { width:8px; height:8px; border-radius:2px; }
+
+/* ── ACTION BTNS ── */
+.act-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:0; }
+.btn {
+  padding:8px 14px; border-radius:8px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1px solid var(--border);
+  background:var(--s2); color:var(--text2);
+  transition:all .15s; font-family:var(--body);
+}
+.btn:hover { border-color:var(--border2); color:var(--text); }
+.btn-go {
+  background: linear-gradient(135deg,#3b82f6,#2563eb);
+  border-color:#3b82f6; color:white;
+  box-shadow:0 0 14px rgba(59,130,246,.3);
+}
+.btn-go:hover { box-shadow:0 0 20px rgba(59,130,246,.5); }
+
+/* ── RESULTS ── */
+.res-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+.res-box {
+  background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px;
+}
+.res-box.span2 { grid-column:span 2; }
+.rl { font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin-bottom:4px; }
+.rv { font-family:var(--mono); font-size:22px; font-weight:500; }
+.rv-mine { color:#60a5fa; }
+.rv-model { color:var(--stat); }
+.rv-model.ai-c { color:var(--ai); }
+.rv-actual { color:var(--warn); }
+
+.divider { height:1px; background:var(--border); margin:10px 0; }
+
+/* Cost table */
+.cost-tbl {
+  background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; overflow:hidden; margin-bottom:10px;
+}
+.ct-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 14px; font-size:12px;
+  border-bottom:1px solid var(--border);
+}
+.ct-row:last-child { border-bottom:none; }
+.ck { color:var(--text2); }
+.cv { font-family:var(--mono); font-weight:600; }
+
+.total-band {
+  background:var(--s3); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px;
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:10px;
+}
+.tb-l { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--text2); font-family:var(--mono); }
+.tb-r { display:flex; align-items:center; gap:8px; }
+.tb-v { font-family:var(--mono); font-size:22px; font-weight:500; }
+.vs-pill {
+  font-family:var(--mono); font-size:9px; font-weight:700;
+  letter-spacing:.06em; padding:3px 8px; border-radius:999px; text-transform:uppercase;
+}
+.vp-win  { background:rgba(52,211,153,.15); color:#34d399; }
+.vp-lose { background:rgba(241,112,82,.15); color:#f87171; }
+.vp-tie  { background:rgba(251,191,36,.15); color:#fbbf24; }
+
+/* Feedback */
+.fb { border-radius:10px; padding:12px 14px; margin-bottom:10px; font-size:12px; line-height:1.7; border:1px solid; }
+.fb-ok   { background:rgba(52,211,153,.07); border-color:rgba(52,211,153,.2); color:#6ee7b7; }
+.fb-low  { background:rgba(241,112,82,.07); border-color:rgba(241,112,82,.2); color:#fca5a5; }
+.fb-high { background:rgba(251,191,36,.07); border-color:rgba(251,191,36,.2); color:#fde68a; }
+.fb-def  { background:var(--s2); border-color:var(--border); color:var(--text2); }
+
+/* ── EXPLANATION BOX ── */
+.explain-box {
+  background: var(--s2); border:1px solid var(--border);
+  border-radius:10px; padding:14px; margin-bottom:10px;
+}
+.explain-title {
+  font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase;
+  margin-bottom:10px; display:flex; align-items:center; gap:6px;
+}
+.explain-title .et-dot { width:6px; height:6px; border-radius:50%; }
+.explain-body { font-size:12px; color:var(--text2); line-height:1.8; }
+.explain-body p + p { margin-top:8px; }
+.explain-tag {
+  display:inline-block; font-family:var(--mono); font-size:9px; font-weight:700;
+  letter-spacing:.06em; padding:2px 7px; border-radius:4px; text-transform:uppercase; margin-bottom:6px;
+}
+
+/* Compare row */
+.cmp-row {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;
+}
+.cmp-box {
+  background:var(--s2); border:1px solid var(--border);
+  border-radius:10px; padding:10px 12px;
+}
+.cmp-head { font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; margin-bottom:4px; }
+.cmp-head.stat-h { color:var(--stat); }
+.cmp-head.ai-h   { color:var(--ai); }
+.cmp-v { font-family:var(--mono); font-size:18px; font-weight:500; }
+.cmp-sub { font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
+
+/* Learn */
+.learn-box {
+  background:rgba(251,191,36,.05); border:1px solid rgba(251,191,36,.15);
+  border-radius:10px; padding:14px;
+}
+.learn-title { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--warn); margin-bottom:10px; }
+.learn-list { list-style:none; display:flex; flex-direction:column; gap:6px; }
+.learn-list li { font-size:11px; color:var(--text2); padding-left:14px; position:relative; line-height:1.6; }
+.learn-list li::before { content:'→'; position:absolute; left:0; color:var(--warn); font-family:var(--mono); }
+
+/* Responsive */
+@media(max-width:600px){
+  .method-opts { grid-template-columns:1fr; }
+  .res-grid { grid-template-columns:1fr; }
+  .res-box.span2 { grid-column:span 1; }
+  .cmp-row { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="eyebrow" id="eyebrow">AI & 물류 · 수요 예측 미니랩</div>
+    <h1 id="h1">수요 예측 미니랩</h1>
+    <p class="sub" id="sub">과거 수요 데이터와 외부 요인을 분석하고, 통계 기법과 AI 기법을 선택해 내일의 수요를 예측해보세요.</p>
+  </div>
+  <div class="lang-sw">
+    <button class="on" onclick="setLang('ko')">한국어</button>
+    <button onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT -->
+  <div>
+
+    <!-- Scenario -->
+    <div class="card">
+      <div class="card-label" id="lbl-sc">SCENARIO</div>
+      <div class="sc-tabs" id="sc-tabs"></div>
+      <div class="sc-box">
+        <div class="sc-row">
+          <span class="sc-name" id="sc-name"></span>
+          <span class="sc-badge" id="sc-badge"></span>
+        </div>
+        <div class="sc-hint" id="sc-hint"></div>
+        <div class="ext-factors" id="ext-factors"></div>
+      </div>
+
+      <!-- History -->
+      <div class="card-label" id="lbl-hist">과거 7일 수요</div>
+      <div class="hist-row" id="hist-row"></div>
+
+      <!-- Method tabs -->
+      <div class="card-label" id="lbl-method">예측 방법 선택</div>
+      <div class="method-tabs">
+        <button class="method-tab stat-on" id="tab-stat" onclick="setMethodGroup('stat')">
+          <span class="dot" style="background:var(--stat)"></span>
+          <span id="tab-stat-lbl">통계 기법</span>
+        </button>
+        <button class="method-tab" id="tab-ai" onclick="setMethodGroup('ai')">
+          <span class="dot" style="background:var(--ai)"></span>
+          <span id="tab-ai-lbl">AI 기법</span>
+        </button>
+      </div>
+      <div class="method-opts" id="method-opts"></div>
+      <div class="formula" id="formula"></div>
+
+      <!-- External factor calc (shown when scenario has factors) -->
+      <div class="ext-calc" id="ext-calc" style="display:none">
+        <span class="ec-title" id="ec-title">외부 요인 반영</span>
+        <span id="ec-body"></span>
+      </div>
+
+      <!-- Slider -->
+      <div class="sl-row">
+        <span class="sl-label" id="lbl-myf">내 예측값</span>
+        <span class="sl-val" id="sl-val">50</span>
+      </div>
+      <input type="range" min="0" max="160" value="50" id="sl" oninput="onSlide(this.value)">
+
+      <!-- Chart -->
+      <div class="chart-wrap">
+        <div class="chart-bars" id="chart"></div>
+        <div class="legend">
+          <div class="leg"><div class="ld" style="background:#475569"></div><span id="lg-h">과거</span></div>
+          <div class="leg"><div class="ld" style="background:#3b82f6"></div><span id="lg-m">내 예측</span></div>
+          <div class="leg"><div class="ld" style="background:var(--stat)"></div><span id="lg-s">모델 예측</span></div>
+          <div class="leg"><div class="ld" style="background:#f59e0b"></div><span id="lg-a">실제값</span></div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="act-row">
+        <button class="btn" onclick="doRandom()" id="btn-rnd">🎲 랜덤</button>
+        <button class="btn btn-go" onclick="doReveal()" id="btn-rev">결과 보기</button>
+        <button class="btn" onclick="doReset()" id="btn-rst">↺ 초기화</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div>
+    <div class="card">
+      <div class="card-label" id="lbl-res">RESULTS</div>
+
+      <!-- Stat values -->
+      <div class="res-grid">
+        <div class="res-box">
+          <div class="rl" id="rl-mine">내 예측</div>
+          <div class="rv rv-mine" id="rv-mine">—</div>
+        </div>
+        <div class="res-box">
+          <div class="rl" id="rl-model">모델 예측</div>
+          <div class="rv rv-model" id="rv-model">?</div>
+        </div>
+        <div class="res-box span2">
+          <div class="rl" id="rl-actual">실제 수요</div>
+          <div class="rv rv-actual" id="rv-actual">?</div>
+        </div>
+      </div>
+
+      <!-- Model compare (stat vs AI, shown after reveal) -->
+      <div id="cmp-section" style="display:none">
+        <div class="card-label" id="lbl-cmp">통계 vs AI 비교</div>
+        <div class="cmp-row">
+          <div class="cmp-box">
+            <div class="cmp-head stat-h" id="ch-stat">통계 예측</div>
+            <div class="cmp-v" style="color:var(--stat)" id="cv-stat">—</div>
+            <div class="cmp-sub" id="cs-stat"></div>
+          </div>
+          <div class="cmp-box">
+            <div class="cmp-head ai-h" id="ch-ai">AI 예측</div>
+            <div class="cmp-v" style="color:var(--ai)" id="cv-ai">—</div>
+            <div class="cmp-sub" id="cs-ai"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Cost -->
+      <div class="cost-tbl" id="cost-tbl">
+        <div class="ct-row"><span class="ck" id="ck-short">품절 수량</span><span class="cv" id="cv-short">?</span></div>
+        <div class="ct-row"><span class="ck" id="ck-over">초과 재고</span><span class="cv" id="cv-over">?</span></div>
+        <div class="ct-row"><span class="ck" id="ck-sc">품절 비용 ×5</span><span class="cv" id="cv-sc">?</span></div>
+        <div class="ct-row"><span class="ck" id="ck-hc">재고 비용 ×2</span><span class="cv" id="cv-hc">?</span></div>
+      </div>
+
+      <div class="total-band">
+        <span class="tb-l" id="tb-l">내 총 비용</span>
+        <div class="tb-r">
+          <span class="tb-v rv-mine" id="tb-v">?</span>
+          <span id="vs-pill"></span>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="fb fb-def" id="fb">
+        <span id="fb-txt"></span>
+      </div>
+
+      <!-- Explanation -->
+      <div class="explain-box" id="exp-box">
+        <div class="explain-title" id="exp-title-row">
+          <span class="et-dot" id="exp-dot"></span>
+          <span id="exp-title-lbl"></span>
+        </div>
+        <div class="explain-body" id="exp-body"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Learning points -->
+      <div class="learn-box">
+        <div class="learn-title" id="lbl-learn">LEARNING POINTS</div>
+        <ul class="learn-list" id="learn-list"></ul>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+</div><!-- /wrap -->
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+
+const SCENARIOS = [
+  {
+    id: 0, badge:'BASIC', badgeClass:'b-basic',
+    title:{ ko:'기본 수요 패턴', en:'Basic Demand Pattern' },
+    history:[42,45,44,48,50,49,53], actual:55,
+    hint:{ ko:'최근으로 갈수록 완만하게 증가하는 추세입니다. 단순한 상승 흐름을 읽어보세요.', en:'Demand shows a gradual upward trend. Try to read the simple growth pattern.' },
+    factors:[],
+    extMultiplier:1.0,
+    extSteps:[]
+  },
+  {
+    id:1, badge:'PROMO', badgeClass:'b-promo',
+    title:{ ko:'프로모션 영향', en:'Promotion Effect' },
+    history:[30,32,31,55,58,34,36], actual:38,
+    hint:{ ko:'Day4–5의 급증은 한시적 프로모션 효과입니다. 행사 종료 후 정상 수요로 돌아오는 패턴을 봐요.', en:'The spike on Day 4–5 was a temporary promotion. Forecast demand returning to normal after the event.' },
+    factors:[{ icon:'🏷️', ko:'프로모션 종료 확인', en:'Promotion has ended' }],
+    extMultiplier:0.95,
+    extSteps:[{ ko:'프로모션 종료 보정 ×0.95', en:'Post-promo correction ×0.95' }]
+  },
+  {
+    id:2, badge:'SEASON', badgeClass:'b-season',
+    title:{ ko:'계절성 수요', en:'Seasonal Demand' },
+    history:[88,92,95,98,102,108,115], actual:122,
+    hint:{ ko:'여름 성수기에 진입 중입니다. 기온 상승과 휴가철이 수요를 가속하고 있어요.', en:'Entering peak summer season. Rising temperatures and vacation period are driving demand up.' },
+    factors:[{ icon:'☀️', ko:'기온 +5°C 예보', en:'Temp +5°C forecast' }, { icon:'🏖️', ko:'휴가 시즌 시작', en:'Vacation season starts' }],
+    extMultiplier:1.08,
+    extSteps:[{ ko:'기온 상승 보정 ×1.05', en:'Temperature boost ×1.05' }, { ko:'휴가철 보정 ×1.03', en:'Vacation season ×1.03' }]
+  },
+  {
+    id:3, badge:'NEW', badgeClass:'b-new',
+    title:{ ko:'신제품 출시', en:'New Product Launch' },
+    history:[10,24,38,45,52,55,58], actual:60,
+    hint:{ ko:'출시 1주일이 지난 신제품입니다. 초기 급성장 후 점차 둔화되는 패턴을 확인하세요.', en:'A new product 1 week after launch. Notice the initial fast growth gradually slowing down.' },
+    factors:[{ icon:'🆕', ko:'출시 8일째', en:'Day 8 since launch' }],
+    extMultiplier:1.03,
+    extSteps:[{ ko:'신제품 지속 성장 보정 ×1.03', en:'New product growth ×1.03' }]
+  },
+  {
+    id:4, badge:'VOLATILE', badgeClass:'b-vol',
+    title:{ ko:'변동성 높은 수요', en:'High Volatility' },
+    history:[60,48,55,50,62,54,58], actual:57,
+    hint:{ ko:'수요가 불규칙하게 오르내립니다. 과거 평균에 기반한 안전 재고 확보 전략이 중요합니다.', en:'Demand fluctuates irregularly. A safety stock strategy based on historical averages is key.' },
+    factors:[],
+    extMultiplier:1.0,
+    extSteps:[]
+  },
+  {
+    id:5, badge:'EXTERNAL', badgeClass:'b-ext',
+    title:{ ko:'외부 요인 포함', en:'External Factors' },
+    history:[35,38,36,40,42,39,44], actual:68,
+    hint:{ ko:'과거 데이터만 보면 수요가 40대로 예측됩니다. 하지만 외부 요인이 수요를 크게 높이고 있어요. 외부 요인을 반영한 예측과 순수 통계 예측을 비교해보세요.', en:'Historical data alone suggests ~40. But external factors are driving demand much higher. Compare forecasts with and without external factors.' },
+    factors:[{ icon:'🎉', ko:'인근 페스티벌 (방문객 +30%)', en:'Nearby festival (+30% visitors)' }, { icon:'🌤️', ko:'맑은 날씨 예보', en:'Clear weather forecast' }, { icon:'📱', ko:'SNS 언급 3배 증가', en:'SNS mentions ×3' }],
+    extMultiplier:1.55,
+    extSteps:[{ ko:'페스티벌 효과 ×1.35', en:'Festival effect ×1.35' }, { ko:'날씨 보정 ×1.08', en:'Weather boost ×1.08' }, { ko:'SNS 바이럴 ×1.07', en:'Viral effect ×1.07' }]
+  }
+];
+
+// ── METHODS ──
+// group: 'stat' | 'ai'
+const METHODS = {
+  stat: [
+    {
+      id:'ma3',
+      label:{ ko:'단순이동평균 (3일)', en:'Moving Average (3-day)' },
+      tag:{ ko:'기초 통계', en:'Basic Stat' },
+      formula:{ ko:'MA₃ = (D5 + D6 + D7) / 3', en:'MA₃ = (D5 + D6 + D7) / 3' },
+      fn: h => Math.round(h.slice(-3).reduce((a,b)=>a+b)/3),
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">단순이동평균</span></p><p>가장 최근 3일의 수요를 단순 평균하는 기법입니다. 계산이 직관적이고 구현이 쉬워 현장에서 여전히 많이 쓰입니다. 단, 오래된 데이터와 최신 데이터에 동일한 가중치를 부여하므로, 급격한 추세 변화에는 느리게 반응하는 단점이 있습니다.</p><p>이 시나리오에서는 최근 데이터의 추세를 얼마나 잘 반영하는지 확인해보세요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">Simple Moving Average</span></p><p>Averages the most recent 3 days of demand. Simple and intuitive — widely used in practice. However, it assigns equal weight to all periods, making it slow to react to sudden trend changes.</p><p>In this scenario, check how well it captures the recent demand pattern.</p>`
+      }
+    },
+    {
+      id:'ma5',
+      label:{ ko:'단순이동평균 (5일)', en:'Moving Average (5-day)' },
+      tag:{ ko:'기초 통계', en:'Basic Stat' },
+      formula:{ ko:'MA₅ = (D3+D4+D5+D6+D7) / 5', en:'MA₅ = (D3+D4+D5+D6+D7) / 5' },
+      fn: h => Math.round(h.slice(-5).reduce((a,b)=>a+b)/5),
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">단순이동평균 (5일)</span></p><p>5일 데이터를 평균하면 단기 노이즈가 줄어들지만, 추세 반응 속도도 느려집니다. 3일 MA와 비교해 더 안정적인 예측을 원할 때 사용합니다.</p><p>프로모션처럼 이상값(스파이크)이 포함된 경우 오히려 예측이 왜곡될 수 있어요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">Simple Moving Average (5-day)</span></p><p>Averaging 5 days reduces short-term noise but also slows response to trends. Use when you want more stable predictions than a 3-day MA.</p><p>Beware: including outlier spikes (like promotions) in the window can distort the forecast.</p>`
+      }
+    },
+    {
+      id:'wma',
+      label:{ ko:'가중이동평균', en:'Weighted Moving Avg' },
+      tag:{ ko:'중급 통계', en:'Intermediate' },
+      formula:{ ko:'WMA = 0.2×D5 + 0.3×D6 + 0.5×D7', en:'WMA = 0.2×D5 + 0.3×D6 + 0.5×D7' },
+      fn: h => { const l=h.slice(-3); return Math.round(l[0]*.2+l[1]*.3+l[2]*.5); },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">가중이동평균</span></p><p>최근 데이터일수록 더 높은 가중치(50%, 30%, 20%)를 부여합니다. 단순이동평균보다 최신 추세에 빠르게 반응하며, 가중치 설정은 도메인 지식에 기반합니다.</p><p>어떤 가중치를 쓰느냐에 따라 예측이 달라지기 때문에, 가중치 자체가 분석자의 판단을 반영합니다.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">Weighted Moving Average</span></p><p>Assigns higher weights to more recent data (50%, 30%, 20%). Responds faster to recent trends than a simple MA. The weights reflect domain knowledge and analyst judgment.</p><p>The choice of weights significantly impacts the forecast — making this method explicitly human-guided.</p>`
+      }
+    },
+    {
+      id:'es',
+      label:{ ko:'지수평활법 (α=0.4)', en:'Exp Smoothing (α=0.4)' },
+      tag:{ ko:'중급 통계', en:'Intermediate' },
+      formula:{ ko:'Fₜ = 0.4×Dₜ + 0.6×Fₜ₋₁', en:'Fₜ = 0.4×Dₜ + 0.6×Fₜ₋₁' },
+      fn: h => { let f=h[0]; for(let i=1;i<h.length;i++) f=0.4*h[i]+0.6*f; return Math.round(f); },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">지수평활법</span></p><p>모든 과거 데이터를 사용하되, 오래된 데이터는 지수적으로 비중을 낮춥니다. α(평활 계수)가 클수록 최신 데이터에 빠르게 반응하고, 작을수록 안정적입니다.</p><p>α=0.4는 중간 반응 속도로, 단기 변동과 장기 추세를 균형 있게 반영합니다. 재고 관리 시스템에서 가장 널리 쓰이는 기법 중 하나입니다.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(56,189,248,.12);color:#7dd3fc">Exponential Smoothing</span></p><p>Uses all historical data but exponentially reduces the weight of older data. A higher α responds faster to recent changes; lower α provides more stability.</p><p>α=0.4 offers balanced responsiveness. This is one of the most widely used methods in inventory management systems.</p>`
+      }
+    }
+  ],
+  ai: [
+    {
+      id:'lr',
+      label:{ ko:'선형 회귀 (추세 예측)', en:'Linear Regression' },
+      tag:{ ko:'ML 기초', en:'ML Basic' },
+      formula:{ ko:'F = a + b×t  (최소제곱법으로 a, b 학습)', en:'F = a + b×t  (a, b learned via Least Squares)' },
+      fn: h => {
+        const n=h.length, mx=(n+1)/2, my=h.reduce((a,b)=>a+b)/n;
+        let num=0,den=0;
+        for(let i=0;i<n;i++){num+=(i+1-mx)*(h[i]-my);den+=(i+1-mx)**2;}
+        const b=num/den,a=my-b*mx;
+        return Math.max(0,Math.round(a+b*(n+1)));
+      },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">선형 회귀</span></p><p>머신러닝의 가장 기본적인 지도 학습 모델입니다. 시간(t)과 수요(y) 사이의 선형 관계를 데이터로부터 학습합니다. "학습"이란 예측 오차를 최소화하는 기울기(b)와 절편(a)을 찾는 과정입니다.</p><p>단순한 구조지만, 추세가 일정한 데이터에서는 이동평균보다 더 나은 예측을 냅니다. AI 기법의 출발점이 되는 개념이에요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">Linear Regression</span></p><p>The most fundamental supervised machine learning model. It learns the linear relationship between time (t) and demand (y) from data. "Learning" means finding the slope (b) and intercept (a) that minimize prediction error.</p><p>Despite its simplicity, it outperforms moving averages for data with consistent trends — and is the conceptual foundation for more complex AI models.</p>`
+      }
+    },
+    {
+      id:'ensemble',
+      label:{ ko:'앙상블 (모델 결합)', en:'Ensemble Model' },
+      tag:{ ko:'ML 핵심 개념', en:'Core ML Concept' },
+      formula:{ ko:'F = (MA₃ + WMA + ES + 선형회귀) / 4', en:'F = (MA₃ + WMA + ES + LinReg) / 4' },
+      fn: h => {
+        const ma3=Math.round(h.slice(-3).reduce((a,b)=>a+b)/3);
+        const wma=Math.round(h.slice(-3).reduce((s,v,i)=>s+v*[.2,.3,.5][i],0));
+        let es=h[0]; for(let i=1;i<h.length;i++) es=0.4*h[i]+0.6*es; es=Math.round(es);
+        const n=h.length,mx=(n+1)/2,my=h.reduce((a,b)=>a+b)/n;
+        let num=0,den=0;
+        for(let i=0;i<n;i++){num+=(i+1-mx)*(h[i]-my);den+=(i+1-mx)**2;}
+        const b=num/den,a=my-b*mx,lr=Math.max(0,Math.round(a+b*(n+1)));
+        return Math.round((ma3+wma+es+lr)/4);
+      },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">앙상블 모델</span></p><p>여러 모델의 예측을 결합해 단일 모델의 약점을 보완하는 핵심 ML 전략입니다. 랜덤 포레스트, XGBoost, 현대 AI 시스템 대부분이 앙상블 원리를 활용합니다.</p><p>이 앱에서는 MA₃, 가중이동평균, 지수평활, 선형회귀 4개를 균등 결합합니다. 단일 모델이 이기는 경우도 있지만, 평균적으로 앙상블이 더 안정적인 이유를 직접 확인해보세요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">Ensemble Model</span></p><p>Combining multiple models to compensate for individual weaknesses is a core ML strategy. Random Forest, XGBoost, and most modern AI systems use ensemble principles.</p><p>This app equally combines MA₃, WMA, ES, and Linear Regression. A single model may sometimes win — but observe how ensembles tend to be more consistently stable.</p>`
+      }
+    },
+    {
+      id:'trend_season',
+      label:{ ko:'추세+계절성 분해', en:'Trend + Seasonality' },
+      tag:{ ko:'Prophet 스타일', en:'Prophet-style' },
+      formula:{ ko:'F = Trend(t) + Seasonal(t)  (Facebook Prophet 원리)', en:'F = Trend(t) + Seasonal(t)  (Facebook Prophet principle)' },
+      fn: h => {
+        // Estimate trend via linear regression
+        const n=h.length,mx=(n+1)/2,my=h.reduce((a,b)=>a+b)/n;
+        let num=0,den=0;
+        for(let i=0;i<n;i++){num+=(i+1-mx)*(h[i]-my);den+=(i+1-mx)**2;}
+        const b=num/den,a=my-b*mx;
+        const trend = a+b*(n+1);
+        // Estimate seasonal component: deviation of last week's same day
+        const detrended = h.map((v,i)=>v-(a+b*(i+1)));
+        // Simple weekly seasonality: same day last week
+        const seasonal = detrended.length>=7 ? detrended[detrended.length-7] : detrended[0];
+        return Math.max(0,Math.round(trend + seasonal*0.5));
+      },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">추세 + 계절성 분해</span></p><p>Facebook의 Prophet 알고리즘이 핵심으로 사용하는 방식입니다. 수요를 추세(Trend) + 계절성(Seasonal) + 잔차(Residual)로 분해한 뒤 각각을 예측하고 결합합니다.</p><p>이 앱에서는 선형 추세와 주간 계절성을 근사적으로 구현했습니다. 실제 Prophet은 비선형 추세, 공휴일 효과, 다중 계절성을 함께 학습합니다. 외부 요인이 있는 시나리오에서 특히 효과가 두드러지는지 확인해보세요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">Trend + Seasonality Decomposition</span></p><p>The core approach used by Facebook's Prophet algorithm. Demand is decomposed into Trend + Seasonal + Residual components, each predicted separately then combined.</p><p>This app approximates linear trend and weekly seasonality. The real Prophet learns non-linear trends, holiday effects, and multiple seasonality patterns. Check if this method performs better on scenarios with clear seasonal patterns.</p>`
+      }
+    },
+    {
+      id:'ext_regression',
+      label:{ ko:'외부 요인 회귀', en:'External Factor Regression' },
+      tag:{ ko:'AI 핵심 — 다중회귀', en:'AI Core — Multi-Regression' },
+      formula:{ ko:'F = β₀ + β₁×추세 + β₂×이벤트 + β₃×날씨 …', en:'F = β₀ + β₁×Trend + β₂×Event + β₃×Weather …' },
+      fn: h => {
+        const n=h.length,mx=(n+1)/2,my=h.reduce((a,b)=>a+b)/n;
+        let num=0,den=0;
+        for(let i=0;i<n;i++){num+=(i+1-mx)*(h[i]-my);den+=(i+1-mx)**2;}
+        const b=num/den,a=my-b*mx;
+        const baseForecast = a+b*(n+1);
+        // External multiplier applied in model forecast display
+        return Math.max(0, Math.round(baseForecast));
+      },
+      explain:{
+        ko:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">외부 요인 다중회귀</span></p><p>과거 수요뿐 아니라 날씨, 이벤트, SNS 반응 등 외부 변수를 독립 변수로 포함하는 회귀 모델입니다. 실제 AI 수요 예측 시스템의 핵심 방식입니다.</p><p>이 시나리오에서 외부 요인 보정값을 보면, 통계 기법(과거 데이터만)으로는 절대 예측할 수 없는 수요 급증을 AI 기법은 어떻게 포착하는지 확인할 수 있습니다. 외부 요인을 무시한 예측과 비교해보세요.</p>`,
+        en:`<p><span class="explain-tag" style="background:rgba(167,139,250,.12);color:#c4b5fd">External Factor Regression</span></p><p>Includes external variables (weather, events, social media) as independent variables alongside historical demand. This is the core approach used in real-world AI demand forecasting systems.</p><p>In this scenario, the external factor adjustment shows how AI models capture demand spikes that pure historical models would completely miss. Compare the adjusted vs unadjusted forecasts.</p>`
+      }
+    }
+  ]
+};
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let lang = 'ko';
+let scIdx = 0;
+let group = 'stat';  // 'stat' | 'ai'
+let mIdx = 0;        // index within current group
+let myForecast = 50;
+let revealed = false;
+
+// ══════════════════════════════════════════
+//  COMPUTED
+// ══════════════════════════════════════════
+function curMethods() { return METHODS[group]; }
+function curMethod()  { return curMethods()[mIdx] || curMethods()[0]; }
+function curSc()      { return SCENARIOS[scIdx]; }
+
+function baseModelForecast() {
+  return curMethod().fn(curSc().history);
+}
+function adjustedModelForecast() {
+  const base = baseModelForecast();
+  if (group === 'ai' && curMethod().id === 'ext_regression') {
+    return Math.round(base * curSc().extMultiplier);
+  }
+  return base;
+}
+// Stat best for compare
+function statBestForecast() {
+  return METHODS.stat[2].fn(curSc().history); // WMA as stat representative
+}
+// AI best for compare
+function aiBestForecast() {
+  const base = METHODS.ai[3].fn(curSc().history); // ext_regression
+  return Math.round(base * curSc().extMultiplier);
+}
+
+function cost(f, actual) {
+  const short = Math.max(0, actual-f);
+  const over  = Math.max(0, f-actual);
+  return { short, over, sc: short*5, hc: over*2, total: short*5+over*2 };
+}
+
+// ══════════════════════════════════════════
+//  LANG
+// ══════════════════════════════════════════
+const T = {
+  eyebrow:     { ko:'AI & 물류 · 수요 예측 미니랩', en:'AI & Logistics · Demand Forecast Lab' },
+  h1:          { ko:'수요 예측 미니랩', en:'Demand Forecast Lab' },
+  sub:         { ko:'과거 수요 데이터와 외부 요인을 분석하고, 통계 기법과 AI 기법을 선택해 내일의 수요를 예측해보세요.', en:'Analyze historical demand and external factors. Choose a statistical or AI method, make your forecast, and compare with the model.' },
+  lbl_sc:      { ko:'SCENARIO', en:'SCENARIO' },
+  lbl_hist:    { ko:'과거 7일 수요', en:'HISTORICAL DEMAND (7 DAYS)' },
+  lbl_method:  { ko:'예측 방법 선택', en:'SELECT FORECAST METHOD' },
+  tab_stat:    { ko:'통계 기법', en:'Statistical' },
+  tab_ai:      { ko:'AI 기법', en:'AI Methods' },
+  btn_rnd:     { ko:'🎲 랜덤', en:'🎲 Random' },
+  btn_rev:     { ko:'결과 보기', en:'Reveal Results' },
+  btn_rst:     { ko:'↺ 초기화', en:'↺ Reset' },
+  lbl_res:     { ko:'RESULTS', en:'RESULTS' },
+  lbl_mine:    { ko:'내 예측', en:'My Forecast' },
+  lbl_model:   { ko:'모델 예측', en:'Model Forecast' },
+  lbl_actual:  { ko:'실제 수요', en:'Actual Demand' },
+  lbl_cmp:     { ko:'통계 vs AI 비교', en:'STAT vs AI COMPARISON' },
+  ch_stat:     { ko:'통계 기법 예측 (WMA)', en:'Statistical (WMA)' },
+  ch_ai:       { ko:'AI 기법 예측 (외부 요인 포함)', en:'AI Forecast (w/ External)' },
+  ck_short:    { ko:'품절 수량', en:'Shortage Units' },
+  ck_over:     { ko:'초과 재고', en:'Overstock Units' },
+  ck_sc:       { ko:'품절 비용 ×5', en:'Shortage Cost ×5' },
+  ck_hc:       { ko:'재고 비용 ×2', en:'Holding Cost ×2' },
+  tb_l:        { ko:'내 총 비용', en:'My Total Cost' },
+  lbl_learn:   { ko:'LEARNING POINTS', en:'LEARNING POINTS' },
+  lbl_myf:     { ko:'내 예측값', en:'My Forecast' },
+  lg_h:        { ko:'과거 수요', en:'Historical' },
+  lg_m:        { ko:'내 예측', en:'Mine' },
+  lg_s:        { ko:'모델 예측', en:'Model' },
+  lg_a:        { ko:'실제값', en:'Actual' },
+  ec_title:    { ko:'외부 요인 반영 계산', en:'EXTERNAL FACTOR ADJUSTMENT' },
+  fb_def:      { ko:'예측값을 설정하고 "결과 보기"를 눌러보세요.', en:'Set your forecast and click "Reveal Results".' },
+  vp_win:      { ko:'AI보다 정확', en:'Beat Model' },
+  vp_lose:     { ko:'모델이 더 정확', en:'Model Wins' },
+  vp_tie:      { ko:'동점', en:'Tied' },
+  learn: {
+    ko:[
+      '과거 데이터만으로는 외부 충격(이벤트, 날씨)에 의한 수요 변동을 포착할 수 없습니다.',
+      '통계 기법은 단순하고 설명 가능하지만, AI 기법은 더 많은 변수를 동시에 학습합니다.',
+      '앙상블 방법은 단일 모델의 약점을 보완해 더 안정적인 예측을 냅니다.',
+      '품절 비용(×5)이 재고 비용(×2)보다 크므로, 약간 높게 예측하는 것이 비용상 유리할 수 있습니다.',
+      '예측 기법을 아는 것만큼, 언제 어떤 기법을 쓸지 판단하는 도메인 지식도 중요합니다.',
+    ],
+    en:[
+      'Historical data alone cannot capture demand shocks caused by external events or weather.',
+      'Statistical methods are simple and interpretable; AI methods learn from many variables simultaneously.',
+      'Ensemble methods compensate for individual model weaknesses, producing more stable forecasts.',
+      'Since shortage cost (×5) > holding cost (×2), slight over-forecasting is often cost-optimal.',
+      'Knowing the methods matters — but so does domain knowledge about when to apply each one.',
+    ]
+  }
+};
+function t(k){ return T[k]?.[lang] ?? k; }
+
+function setLang(l){
+  lang = l;
+  document.querySelectorAll('.lang-sw button').forEach(b=>{
+    b.classList.toggle('on', (l==='ko'&&b.textContent==='한국어')||(l==='en'&&b.textContent==='EN'));
+  });
+  renderAll();
+}
+
+// ══════════════════════════════════════════
+//  FEEDBACK
+// ══════════════════════════════════════════
+function getFeedback(myF, actual, modelF) {
+  const gap = Math.abs(actual-myF);
+  const mGap = Math.abs(actual-modelF);
+  if(lang==='ko'){
+    if(gap===0) return {cls:'fb-ok', txt:'완벽합니다! 실제 수요를 정확히 맞췄어요.'};
+    if(gap<=3)  return {cls:'fb-ok', txt:`훌륭해요. 실제 수요(${actual})와 오차 ${gap} 단위입니다.`};
+    if(gap<mGap) return {cls:'fb-ok', txt:`이번엔 모델보다 더 정확하게 예측했어요! (오차: 나 ${gap} vs 모델 ${mGap})`};
+    if(myF<actual) return {cls:'fb-low', txt:`수요를 낮게 예측했어요. 품절 위험 — 부족분: ${actual-myF}개`};
+    return {cls:'fb-high', txt:`수요를 높게 예측했어요. 재고 부담 — 초과분: ${myF-actual}개`};
+  } else {
+    if(gap===0) return {cls:'fb-ok', txt:'Perfect! You nailed the actual demand.'};
+    if(gap<=3)  return {cls:'fb-ok', txt:`Excellent. Only ${gap} unit(s) off from actual (${actual}).`};
+    if(gap<mGap) return {cls:'fb-ok', txt:`You outperformed the model! (Error: You ${gap} vs Model ${mGap})`};
+    if(myF<actual) return {cls:'fb-low', txt:`Under-forecast. Stockout risk — short by ${actual-myF} units.`};
+    return {cls:'fb-high', txt:`Over-forecast. Holding cost risk — excess ${myF-actual} units.`};
+  }
+}
+
+// ══════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════
+function renderAll(){
+  const sc = curSc();
+  const method = curMethod();
+  const modelF = adjustedModelForecast();
+  const actual = sc.actual;
+
+  // Header
+  document.getElementById('eyebrow').textContent = t('eyebrow');
+  document.getElementById('h1').textContent = t('h1');
+  document.getElementById('sub').textContent = t('sub');
+
+  // Scenario tabs
+  document.getElementById('lbl-sc').textContent = t('lbl_sc');
+  document.getElementById('sc-tabs').innerHTML = SCENARIOS.map((s,i)=>
+    `<button class="sc-tab ${i===scIdx?'on':''}" onclick="selectSc(${i})">${s.title[lang]}</button>`
+  ).join('');
+
+  // Scenario info
+  document.getElementById('sc-name').textContent = sc.title[lang];
+  const badge = document.getElementById('sc-badge');
+  badge.textContent = sc.badge; badge.className = 'sc-badge '+sc.badgeClass;
+  document.getElementById('sc-hint').textContent = sc.hint[lang];
+  document.getElementById('ext-factors').innerHTML = sc.factors.map(f=>
+    `<div class="ext-chip"><span>${f.icon}</span><span>${f[lang]}</span></div>`
+  ).join('');
+
+  // History
+  document.getElementById('lbl-hist').textContent = t('lbl_hist');
+  document.getElementById('hist-row').innerHTML = sc.history.map((v,i)=>
+    `<div class="hist-chip"><span class="dl">D${i+1}</span><span class="dv">${v}</span></div>`
+  ).join('');
+
+  // Method tabs
+  document.getElementById('lbl-method').textContent = t('lbl_method');
+  document.getElementById('tab-stat-lbl').textContent = t('tab_stat');
+  document.getElementById('tab-ai-lbl').textContent = t('tab_ai');
+  document.getElementById('tab-stat').className = 'method-tab'+(group==='stat'?' stat-on':'');
+  document.getElementById('tab-ai').className   = 'method-tab'+(group==='ai'  ?' ai-on':'');
+
+  // Method options
+  document.getElementById('method-opts').innerHTML = curMethods().map((m,i)=>
+    `<button class="mopt ${i===mIdx?(group==='stat'?'on-stat':'on-ai'):''}" onclick="selectMethod(${i})">
+      <span class="mn">${m.label[lang]}</span>
+      <span class="mt">${m.tag[lang]}</span>
+    </button>`
+  ).join('');
+
+  // Formula
+  const fmEl = document.getElementById('formula');
+  fmEl.className = 'formula'+(group==='stat'?' stat-f':'');
+  fmEl.textContent = method.formula[lang];
+
+  // External calc display
+  const extCalcEl = document.getElementById('ext-calc');
+  if(sc.extSteps.length > 0 && group==='ai' && method.id==='ext_regression'){
+    extCalcEl.style.display='block';
+    document.getElementById('ec-title').textContent = t('ec_title');
+    const base = baseModelForecast();
+    let steps = `기본 예측 (선형회귀): ${base}\n`;
+    let running = base;
+    sc.extSteps.forEach(s=>{
+      steps += `${s[lang]}\n`;
+    });
+    steps += `─────────────────────\n최종 외부 요인 반영 예측: ${Math.round(base * sc.extMultiplier)}`;
+    document.getElementById('ec-body').textContent = steps;
+  } else {
+    extCalcEl.style.display='none';
+  }
+
+  // Slider
+  document.getElementById('lbl-myf').textContent = t('lbl_myf');
+  document.getElementById('sl-val').textContent = myForecast;
+  document.getElementById('sl').value = myForecast;
+
+  // Legend
+  document.getElementById('lg-h').textContent = t('lg_h');
+  document.getElementById('lg-m').textContent = t('lg_m');
+  document.getElementById('lg-s').textContent = t('lg_s');
+  document.getElementById('lg-a').textContent = t('lg_a');
+
+  // Buttons
+  document.getElementById('btn-rnd').textContent = t('btn_rnd');
+  document.getElementById('btn-rev').textContent = t('btn_rev');
+  document.getElementById('btn-rst').textContent = t('btn_rst');
+
+  // Results
+  document.getElementById('lbl-res').textContent = t('lbl_res');
+  document.getElementById('rl-mine').textContent = t('lbl_mine');
+  document.getElementById('rl-model').textContent = t('lbl_model');
+  document.getElementById('rl-actual').textContent = t('lbl_actual');
+  document.getElementById('rv-mine').textContent = myForecast;
+
+  const rvModel = document.getElementById('rv-model');
+  rvModel.className = 'rv '+(group==='stat'?'rv-model':'rv-model ai-c');
+
+  document.getElementById('ck-short').textContent = t('ck_short');
+  document.getElementById('ck-over').textContent  = t('ck_over');
+  document.getElementById('ck-sc').textContent    = t('ck_sc');
+  document.getElementById('ck-hc').textContent    = t('ck_hc');
+  document.getElementById('tb-l').textContent     = t('tb_l');
+
+  document.getElementById('lbl-cmp').textContent  = t('lbl_cmp');
+  document.getElementById('ch-stat').textContent  = t('ch_stat');
+  document.getElementById('ch-ai').textContent    = t('ch_ai');
+
+  // Explanation box (always shown, updates with method)
+  const expDot = document.getElementById('exp-dot');
+  expDot.style.background = group==='stat' ? 'var(--stat)' : 'var(--ai)';
+  document.getElementById('exp-title-lbl').textContent = group==='stat'
+    ? (lang==='ko'?'통계 기법 설명':'Method Explanation')
+    : (lang==='ko'?'AI 기법 설명':'AI Method Explanation');
+  document.getElementById('exp-title-lbl').style.color = group==='stat' ? 'var(--stat)' : 'var(--ai)';
+  document.getElementById('exp-body').innerHTML = method.explain[lang];
+
+  if(revealed){
+    rvModel.textContent = modelF;
+    document.getElementById('rv-actual').textContent = actual;
+
+    const myCost    = cost(myForecast, actual);
+    const modelCost = cost(modelF, actual);
+
+    document.getElementById('cv-short').textContent = myCost.short;
+    document.getElementById('cv-over').textContent  = myCost.over;
+    document.getElementById('cv-sc').textContent    = myCost.sc;
+    document.getElementById('cv-hc').textContent    = myCost.hc;
+    document.getElementById('tb-v').textContent     = myCost.total;
+
+    // VS pill
+    const pill = document.getElementById('vs-pill');
+    if(myCost.total < modelCost.total){
+      pill.className='vs-pill vp-win'; pill.textContent=t('vp_win');
+    } else if(myCost.total > modelCost.total){
+      pill.className='vs-pill vp-lose'; pill.textContent=t('vp_lose');
+    } else {
+      pill.className='vs-pill vp-tie'; pill.textContent=t('vp_tie');
+    }
+
+    // Stat vs AI compare section
+    const statF = statBestForecast();
+    const aiF   = aiBestForecast();
+    document.getElementById('cmp-section').style.display='block';
+    document.getElementById('cv-stat').textContent = statF;
+    document.getElementById('cv-ai').textContent   = aiF;
+    const statErr = Math.abs(actual-statF), aiErr = Math.abs(actual-aiF);
+    document.getElementById('cs-stat').textContent = lang==='ko'
+      ? `오차 ${statErr} | 비용 ${cost(statF,actual).total}`
+      : `Error ${statErr} | Cost ${cost(statF,actual).total}`;
+    document.getElementById('cs-ai').textContent   = lang==='ko'
+      ? `오차 ${aiErr} | 비용 ${cost(aiF,actual).total}`
+      : `Error ${aiErr} | Cost ${cost(aiF,actual).total}`;
+
+    // Feedback
+    const fb = getFeedback(myForecast, actual, modelF);
+    const fbEl = document.getElementById('fb');
+    fbEl.className = 'fb '+fb.cls;
+    document.getElementById('fb-txt').textContent = fb.txt;
+
+  } else {
+    rvModel.textContent = '?';
+    document.getElementById('rv-actual').textContent = '?';
+    ['cv-short','cv-over','cv-sc','cv-hc'].forEach(id=>document.getElementById(id).textContent='?');
+    document.getElementById('tb-v').textContent = '?';
+    document.getElementById('vs-pill').textContent = '';
+    document.getElementById('vs-pill').className = 'vs-pill';
+    document.getElementById('cmp-section').style.display='none';
+    const fbEl = document.getElementById('fb');
+    fbEl.className='fb fb-def';
+    document.getElementById('fb-txt').textContent = t('fb_def');
+  }
+
+  // Chart
+  renderChart();
+
+  // Learning
+  document.getElementById('lbl-learn').textContent = t('lbl_learn');
+  document.getElementById('learn-list').innerHTML = t('learn').map(s=>`<li>${s}</li>`).join('');
+}
+
+function renderChart(){
+  const sc = curSc();
+  const modelF = adjustedModelForecast();
+  const allV = [...sc.history, myForecast, revealed?modelF:0, revealed?sc.actual:0].filter(Boolean);
+  const maxV = Math.max(...allV)+10;
+  const toH = v => Math.max(3, (v/maxV)*120);
+
+  let html = sc.history.map((v,i)=>`
+    <div class="bc">
+      <div class="bn">${v}</div>
+      <div class="bb bb-h" style="height:${toH(v)}px"></div>
+      <div class="bl">D${i+1}</div>
+    </div>`).join('');
+
+  html += `<div class="bc">
+    <div class="bn">${myForecast}</div>
+    <div class="bb bb-mine" style="height:${toH(myForecast)}px"></div>
+    <div class="bl">${lang==='ko'?'내 예측':'Mine'}</div>
+  </div>`;
+
+  if(revealed){
+    const barCls = group==='stat'?'bb-stat':'bb-ai';
+    html += `<div class="bc">
+      <div class="bn">${modelF}</div>
+      <div class="bb ${barCls}" style="height:${toH(modelF)}px"></div>
+      <div class="bl">${lang==='ko'?'모델':'Model'}</div>
+    </div>
+    <div class="bc">
+      <div class="bn">${sc.actual}</div>
+      <div class="bb bb-act" style="height:${toH(sc.actual)}px"></div>
+      <div class="bl">${lang==='ko'?'실제':'Actual'}</div>
+    </div>`;
+  }
+  document.getElementById('chart').innerHTML = html;
+}
+
+// ══════════════════════════════════════════
+//  INTERACTIONS
+// ══════════════════════════════════════════
+function selectSc(i){ scIdx=i; mIdx=0; myForecast=50; revealed=false; renderAll(); }
+
+function setMethodGroup(g){
+  group=g; mIdx=0; revealed=false; renderAll();
+}
+
+function selectMethod(i){ mIdx=i; revealed=false; renderAll(); }
+
+function onSlide(v){ myForecast=parseInt(v); revealed=false; renderChart(); document.getElementById('sl-val').textContent=v; }
+
+function doRandom(){
+  const sc=curSc();
+  const mn=Math.min(...sc.history)-5, mx=Math.max(...sc.history)+20;
+  myForecast=Math.max(0,Math.min(160,Math.floor(Math.random()*(mx-mn+1))+mn));
+  revealed=false; renderAll();
+}
+
+function doReveal(){ revealed=true; renderAll(); }
+
+function doReset(){ myForecast=50; revealed=false; renderAll(); }
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+renderAll();
+</script>
+</body>
+</html>
