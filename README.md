@@ -1,1 +1,1 @@
-# demandForcasting-lab
+# demandForecasting-lab
